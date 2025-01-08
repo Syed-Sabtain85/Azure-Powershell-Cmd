@@ -1,0 +1,74 @@
+                                ````````````````````````````````````POWERSHELL COMMNADS TO CREATE VM, SUBNET, NIC, PUBLIC IP````````````````````````````````````````````````````````
+
+
+
+<------------------------------------------------------SETTING THE PARAMETER---------------------------------------------------------------->
+
+$resourceGroupName = "sabtainrg"
+$location = "EastUS"
+$vnetName = "MysabVNet"
+$subnet1Name = "MySubnet1"
+$subnet2Name = "MySubnet2"
+$vnetAddressSpace = "10.0.0.0/16"
+$subnet1AddressPrefix = "10.0.1.0/24"
+$subnet2AddressPrefix = "10.0.2.0/24"
+$publicIpName = "MysabPublicIP"
+$nicName = "MysabNIC"
+$vmName = "MysabVM"
+$vmSize = "Standard_B2s"
+$adminUsername = "azureuser"
+$adminPassword = "SecureP@ssw0rd123!" # Change to a secure password
+$imagePublisher = "Canonical"
+$imageOffer = "UbuntuServer"
+$imageSku = "16.04-lts"
+
+<------------------------------------------------------CREATING THE RESOURCE GROUP---------------------------------------------------------------->
+
+
+New-AzResourceGroup -Name $resourceGroupName -Location $location
+
+<------------------------------------------------------CREATING VNET AND ADDING SUBNETS---------------------------------------------------------------->
+
+# Create VNet
+$vnet = New-AzVirtualNetwork -ResourceGroupName $resourceGroupName -Location $location -Name $vnetName -AddressPrefix $vnetAddressSpace
+
+# Add Subnet 1
+Add-AzVirtualNetworkSubnetConfig -Name $subnet1Name -AddressPrefix $subnet1AddressPrefix -VirtualNetwork $vnet
+
+# Add Subnet 2
+Add-AzVirtualNetworkSubnetConfig -Name $subnet2Name -AddressPrefix $subnet2AddressPrefix -VirtualNetwork $vnet
+
+# Apply changes to VNet
+$vnet | Set-AzVirtualNetwork
+
+<------------------------------------------------------CREATING THE PUBLIC IP ADDRESS---------------------------------------------------------------->
+
+$publicIp = New-AzPublicIpAddress -ResourceGroupName $resourceGroupName -Location $location -Name $publicIpName -AllocationMethod Static -Sku Standard
+
+
+<------------------------------------------------------CREATING THE NIC---------------------------------------------------------------->
+
+Get-AzVirtualNetwork -ResourceGroupName $resourceGroupName
+
+$vnet = Get-AzVirtualNetwork -ResourceGroupName $resourceGroupName -Name $vnetName
+$subnet1 = Get-AzVirtualNetworkSubnetConfig -VirtualNetwork $vnet -Name $subnet1Name
+
+$subnet1.Id
+
+<------------------------------------------------------CREATING THE VIRTUAL MACHINE---------------------------------------------------------------->
+
+# Specify VM Config
+$vmConfig = New-AzVMConfig -VMName $vmName -VMSize $vmSize
+
+# Add Network Interface to VM
+$vmConfig = Add-AzVMNetworkInterface -VM $vmConfig -Id $nic.Id
+
+# Specify OS Disk
+$vmConfig = Set-AzVMOperatingSystem -VM $vmConfig -Linux -ComputerName $vmName -Credential (New-Object PSCredential ($adminUsername, (ConvertTo-SecureString $adminPassword -AsPlainText -Force)))
+
+# Specify Image
+$vmConfig = Set-AzVMSourceImage -VM $vmConfig -PublisherName $imagePublisher -Offer $imageOffer -Skus $imageSku -Version "latest"
+
+# Create VM
+New-AzVM -ResourceGroupName $resourceGroupName -Location $location -VM $vmConfig
+
